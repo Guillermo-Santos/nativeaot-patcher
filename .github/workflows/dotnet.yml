@@ -20,6 +20,9 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
+      - name: Add ilc Tool
+        run: dotnet tool install ilc -g
+
       - name: Restore Dependencies
         run: dotnet restore ./Liquip.Patcher.Tests/Liquip.Patcher.Tests.csproj
 
