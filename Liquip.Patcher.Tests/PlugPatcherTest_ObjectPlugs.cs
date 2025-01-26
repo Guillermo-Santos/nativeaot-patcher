@@ -1,102 +1,98 @@
 ﻿using Liquip.NativeWrapper;
-using Liquip.Patcher;
 using Mono.Cecil;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using Xunit;
 
-namespace Liquip.Patcher.Tests
+namespace Liquip.Patcher.Tests;
+
+public class PlugPatcherTest_ObjectPlugs
 {
-    public class PlugPatcherTest_ObjectPlugs
+    private AssemblyDefinition CreateMockAssembly<T>()
     {
-        private AssemblyDefinition CreateMockAssembly<T>()
-        {
-            var assemblyPath = typeof(T).Assembly.Location;
-            return AssemblyDefinition.ReadAssembly(assemblyPath);
-        }
+        string? assemblyPath = typeof(T).Assembly.Location;
+        return AssemblyDefinition.ReadAssembly(assemblyPath);
+    }
 
-        [Fact]
-        public void PatchObjectWithAThis_ShouldPlugInstanceCorrectly()
-        {
-            // Arrange
-            var plugScanner = new PlugScanner();
-            var patcher = new PlugPatcher(plugScanner);
+    [Fact]
+    public void PatchObjectWithAThis_ShouldPlugInstanceCorrectly()
+    {
+        // Arrange
+        PlugScanner? plugScanner = new();
+        PlugPatcher? patcher = new(plugScanner);
 
-            var targetAssembly = CreateMockAssembly<NativeWrapperObject>();
-            var plugAssembly = CreateMockAssembly<NativeWrapperObjectPlug>();
+        AssemblyDefinition? targetAssembly = CreateMockAssembly<NativeWrapperObject>();
+        AssemblyDefinition? plugAssembly = CreateMockAssembly<NativeWrapperObjectPlug>();
 
-            var targetType = targetAssembly.MainModule.Types.FirstOrDefault(t => t.Name == nameof(NativeWrapperObject));
-            Assert.NotNull(targetType);
+        TypeDefinition? targetType =
+            targetAssembly.MainModule.Types.FirstOrDefault(t => t.Name == nameof(NativeWrapperObject));
+        Assert.NotNull(targetType);
 
-            // Act: Apply the plug
-            patcher.PatchAssembly(targetAssembly, plugAssembly);
+        // Act: Apply the plug
+        patcher.PatchAssembly(targetAssembly, plugAssembly);
 
-            PlugUtils.Save(targetAssembly, "./", "targetObjectAssembly.dll");
+        PlugUtils.Save(targetAssembly, "./", "targetObjectAssembly.dll");
 
-            var result = ExecuteObject(targetAssembly, "NativeWrapperObject", "InstanceMethod", new object[] { 10 });
-            Assert.Equal(20, result);
-        }
+        object? result = ExecuteObject(targetAssembly, "NativeWrapperObject", "InstanceMethod", [10]);
 
-        private object ExecuteObject(AssemblyDefinition assemblyDefinition, string typeName, string methodName, params object[] parameters)
-        {
-            using var memoryStream = new System.IO.MemoryStream();
-            assemblyDefinition.Write(memoryStream);
-            memoryStream.Seek(0, System.IO.SeekOrigin.Begin);
+        Assert.Equal(20, result);
+    }
 
-            var loadedAssembly = Assembly.Load(memoryStream.ToArray());
-            var type = loadedAssembly.GetType("Liquip.NativeWrapper.NativeWrapperObject");
-            Assert.NotNull(type);
+    private object ExecuteObject(AssemblyDefinition assemblyDefinition, string typeName, string methodName,
+        params object[] parameters)
+    {
+        using MemoryStream? memoryStream = new();
+        assemblyDefinition.Write(memoryStream);
+        memoryStream.Seek(0, SeekOrigin.Begin);
 
-            var instance = Activator.CreateInstance(type);
-            var method = type.GetMethod(methodName, BindingFlags.Public | BindingFlags.Instance);
-            Assert.NotNull(method);
+        Assembly? loadedAssembly = Assembly.Load(memoryStream.ToArray());
+        Type? type = loadedAssembly.GetType("Liquip.NativeWrapper.NativeWrapperObject");
+        Assert.NotNull(type);
 
-            return method.Invoke(instance, parameters);
-        }
+        object? instance = Activator.CreateInstance(type);
+        MethodInfo? method = type.GetMethod(methodName, BindingFlags.Public | BindingFlags.Instance);
+        Assert.NotNull(method);
 
-        [Fact]
-        public void PatchConstructor_ShouldPlugCtorCorrectly()
-        {
-            // Arrange
-            var plugScanner = new PlugScanner();
-            var patcher = new PlugPatcher(plugScanner);
+        return method.Invoke(instance, parameters);
+    }
 
-            var targetAssembly = CreateMockAssembly<NativeWrapperObject>();
-            var plugAssembly = CreateMockAssembly<NativeWrapperObjectPlug>();
+    [Fact]
+    public void PatchConstructor_ShouldPlugCtorCorrectly()
+    {
+        // Arrange
+        PlugScanner? plugScanner = new();
+        PlugPatcher? patcher = new(plugScanner);
 
-            var targetType = targetAssembly.MainModule.Types.FirstOrDefault(t => t.Name == nameof(NativeWrapperObject));
-            Assert.NotNull(targetType);
+        AssemblyDefinition? targetAssembly = CreateMockAssembly<NativeWrapperObject>();
+        AssemblyDefinition? plugAssembly = CreateMockAssembly<NativeWrapperObjectPlug>();
 
-            using var stringWriter = new StringWriter();
-            Console.SetOut(stringWriter);
+        TypeDefinition? targetType =
+            targetAssembly.MainModule.Types.FirstOrDefault(t => t.Name == nameof(NativeWrapperObject));
+        Assert.NotNull(targetType);
 
-            // Act: Apply the plug
-            patcher.PatchAssembly(targetAssembly, plugAssembly);
+        // Act: Apply the plug
+        patcher.PatchAssembly(targetAssembly, plugAssembly);
 
-            PlugUtils.Save(targetAssembly, "./", "targetCtorAssembly.dll");
+        PlugUtils.Save(targetAssembly, "./", "targetCtorAssembly.dll");
 
-            var instance = ExecuteConstructor(targetAssembly, "NativeWrapperObject");
+        using StringWriter? stringWriter = new();
+        Console.SetOut(stringWriter);
 
-            // Assert: Check the standard output for the constructor plug
-            var output = stringWriter.ToString();
-            Assert.Contains("Plugged ctor", output);
-        }
+        object? instance = ExecuteConstructor(targetAssembly, "NativeWrapperObject");
 
-        private object ExecuteConstructor(AssemblyDefinition assemblyDefinition, string typeName)
-        {
-            using var memoryStream = new MemoryStream();
-            assemblyDefinition.Write(memoryStream);
-            memoryStream.Seek(0, SeekOrigin.Begin);
+        // Assert: Check the standard output for the constructor plug
+        string? output = stringWriter.ToString();
+        Assert.Contains("Plugged ctor", output);
+    }
 
-            var loadedAssembly = Assembly.Load(memoryStream.ToArray());
-            var type = loadedAssembly.GetType("Liquip.NativeWrapper." + typeName);
-            Assert.NotNull(type);
+    private object ExecuteConstructor(AssemblyDefinition assemblyDefinition, string typeName)
+    {
+        using MemoryStream? memoryStream = new();
+        assemblyDefinition.Write(memoryStream);
+        memoryStream.Seek(0, SeekOrigin.Begin);
 
-            return Activator.CreateInstance(type);
-        }
+        Assembly? loadedAssembly = Assembly.Load(memoryStream.ToArray());
+        Type? type = loadedAssembly.GetType("Liquip.NativeWrapper." + typeName);
+        Assert.NotNull(type);
+
+        return Activator.CreateInstance(type);
     }
 }

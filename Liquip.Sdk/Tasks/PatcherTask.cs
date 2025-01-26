@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 
@@ -10,38 +5,30 @@ namespace Liquip.Sdk.Tasks;
 
 public class PatcherTask : ToolTask
 {
-    
     [Required]
     public string PatcherPath { get; set; } = null!;
 
-    [Required]
-    public string TargetAssembly { get; set; } = null!;
+    [Required] public string TargetAssembly { get; set; } = null!;
 
     [Required]
     public ITaskItem[] References { get; set; } = null!;
-    
+
     [Required]
     public ITaskItem[] PlugsReferences { get; set; } = null!;
-    
-    protected override string GenerateFullPathToTool()
-    {
-        return PatcherPath;
-    }
 
-    public override bool Execute()
-    {
-        return base.Execute();
-    }
+    protected override string ToolName =>  Path.GetFileNameWithoutExtension(PatcherPath);
 
-    protected override string ToolName { get; } = nameof(PatcherTask);
+    protected override string GenerateFullPathToTool() => PatcherPath;
+
+    public override bool Execute() => base.Execute();
 
     protected override string GenerateResponseFileCommands()
     {
-        var args = new Dictionary<string, string>
+        List<KeyValuePair<string, string>>? args = new Dictionary<string, string>
         {
-            [nameof(TargetAssembly)] = TargetAssembly,
+            [nameof(TargetAssembly)] = TargetAssembly
         }.ToList();
-        
+
         args.AddRange(References
             .Select(reference =>
                 new KeyValuePair<string, string>(nameof(References), reference.ItemSpec)
